@@ -46,15 +46,17 @@ class AnalizeDados:
                                                                                 classe, test_size=0.2, random_state=0)
 
         if method == 'NB':
-            classificador = GaussianNB()  #  0.66 accuracy
+            classificador = GaussianNB()
         elif method == 'tree':
-            classificador = DecisionTreeClassifier(criterion='entropy')  # 0.83 accuracy
+            classificador = DecisionTreeClassifier(criterion='entropy') 
+        elif method == 'RandomForest':
+            classificador = RandomForestClassifier(n_estimators=10, criterion='entropy', random_state=0)
+
         classificador.fit(previsores_treinamento, classe_treinamento)
         previsoes = classificador.predict(previsores_teste)
 
         precisao = accuracy_score(classe_teste, previsoes)
         matriz = confusion_matrix(classe_teste, previsoes)
-        print(classificador.predict([[4053.0,201,445,547,675,667,642,924,562,1016,253,439,1284,961,830,976,643,961,804]]))
         print(f'{method}:{precisao}%')
         print(classificador.classes_)
         print(matriz)
@@ -64,8 +66,5 @@ dados = AnalizeDados
 #  dados.inset_result(db='database_dollar.csv', mins=1, delta=1)
 dados.predicts('dataset/database_indice_5min_50delta.csv', method='NB')
 dados.predicts('dataset/database_indice_5min_50delta.csv', method='tree')
+dados.predicts('dataset/database_indice_5min_50delta.csv', method='RandomForest')
 
-'''
-df = pd.read_csv('database.csv', index_col=0)  # LER SEM O INDEX
-df.to_csv('database.csv', index=0)  #  SALVAR DF SEM COLUNA INDEX
-'''
