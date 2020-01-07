@@ -64,22 +64,14 @@ class GetData:
         :return:
             (list) lista com valores de preço maximo e minimo
         """
-        xtreme_vals = []
-        preco_max = 0
-        preco_min = 0
         soup = BeautifulSoup(html, 'html.parser')
         #  PREÇO ATUAL
         atual = soup.find('div', {'class': 'lastPrice'})
         preco_atual = atual.text
         preco_atual = preco_atual.replace(',', '.')
         preco_atual = float(preco_atual)
-        if preco_atual > preco_max:
-            preco_max = preco_atual
-        elif preco_atual < preco_min:
-            preco_min = preco_atual
-        xtreme_vals.append(preco_max)
-        xtreme_vals.append(preco_min)
-        return xtreme_vals
+        return preco_atual
+
 
     @staticmethod
     def add_info(data, xtreme_vals):
@@ -109,7 +101,6 @@ class GetData:
         data.append(new_mme13)
         data.append(new_mme72)
         data.append(hora)
-        print(data)
         return data
 
     @staticmethod
