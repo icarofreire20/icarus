@@ -1,10 +1,11 @@
+# coding=utf-8
 from selenium import webdriver
 from time import sleep
 from datetime import datetime, timedelta
 from datas import GetData
 import threading
 from AI import AnalizeDados
-
+import pickle
 
 class ChromeAuto:
     def __init__(self):
@@ -93,17 +94,25 @@ def get_input():
         if keystrk == 's':
             flag = False
             print('Fechando o TRADER...')
+        else:
+            print('comando invalido')
 
 
 flag = True
 if __name__ == '__main__':
+    #  realiza os carregamentos necessarios para execuçao do programa
     i = threading.Thread(target=get_input)
     i.start()
     chrome = ChromeAuto()
     dados = GetData()
-
+    intelligence = AnalizeDados()
+    intelligence.inset_result(db='database.csv', mins=15, delta=5)
+    scaler = intelligence.predicts('dataset/database_15min_5delta.csv', method='RandomForest')
+    pickle_in = open("stocks.pickle", "rb")  # carrega os pesos para a random forest 
+    classificador = pickle.load(pickle_in)
+    #  execuçao dos comandos, chama funções e faz as intercomunicações
     chrome.access('https://www.clear.com.br/pit/signin?controller=SignIn&referrer=http%3a%2f%2fwww.clear.com.br%2fpit')
-    chrome.login(cpf='xxxxxxxxxxx', senha='xxxxxx', nascimento='ddmmaa')
+    chrome.login(cpf='XXXXXXXXXXX', senha='XXXXXX', nascimento='DDMMAAAA')  # insere dados para logar no site
     chrome.access('https://www.clear.com.br/pit/daytrade/Main#')
     sleep(15)  # aguarda o carregamento total da pagina
     print('contruindo DB')
@@ -111,18 +120,41 @@ if __name__ == '__main__':
         #  sincroniza com o relogio para que o script rode a cada minuto
         minute = float(str(datetime.now())[17:])
         sleep(60 - minute)
-        dt = datetime.now() + timedelta(seconds=58)
-        max_min = [0, 0]
+        dt = datetime.now() + timedelta(seconds=54)
+        max_min = [0, 10000]
         print(datetime.now(), 'monitorando...')
         while datetime.now() < dt and flag:
             #  monitora o preço maximo e minimo (aprox 115 interaçoes por minuto)
             html_code = chrome.get_html('https://www.clear.com.br/pit/daytrade/Main#')
-            max_min = dados.get_min_max(html_code)
+            preco_atual = dados.get_min_max(html_code)
+            if preco_atual > max_min[0]:
+                max_min[0] = preco_atual
+            elif preco_atual < max_min[1]:
+                max_min[1] = preco_atual
+
+        if not flag:
+            break
+        #  coleta todos os dados do site, insere medias e salva no banco de dados
         html_code = chrome.get_html('https://www.clear.com.br/pit/daytrade/Main#')
         print(datetime.now(), 'extraindo dados')
         line = dados.get_data(html_code)
-        print(datetime.now(), 'salvando dados')
         line = dados.add_info(line, max_min)
         dados.csv_builder(line)
+        print(datetime.now(), 'passando pela AI')
+
+        #  passa linha de dados pela inteligencia artificial
+        line = line[1:]
+        price = line[0]
+        line = [[float(i) for i in line]]
+        line = scaler.transform(line)
+        previsao = classificador.predict(line)
+        previsao = str(previsao[0])
+        #  se previsao de entrar na operação salva num arquivo de log
+        if previsao != 'permanecer':
+            string_output = f"operaçao de {previsao.upper()} no preço: {price}  As {datetime.now()}\n"
+            with open('logs/log_entradas.txt', 'a') as f:
+                f.write(string_output)
+        print(datetime.now(), 'fim')
 
     chrome.quit()
+
